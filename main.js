@@ -5,7 +5,7 @@ let nameInput = document.querySelector('.product-name')
 let priceInput = document.querySelector('.product-price')
 let  addBtn = document.querySelector('.add-product')
 let deleteBtn = document.querySelector('.delete-product')
-
+let formElm = document.querySelector('form')
 let msg = document.querySelector('.msg')
 
 
@@ -47,7 +47,7 @@ function deleteItemFromLocalStorage(id){
   if(result.length === 0) location.reload()
 }
 
-getData(productData)
+addDataToUI(productData)
 
 
 loadAllEventListener()
@@ -57,7 +57,7 @@ function loadAllEventListener(){
   // add item
 addBtn.addEventListener('click',addItem)
 // delete item
-productListUL.addEventListener('click',deleteItem)
+productListUL.addEventListener('click',modifyOrDltItem)
 // filter Item
 filterInput.addEventListener('keyup',filterItem)
 }
@@ -72,7 +72,8 @@ function addItem(e){
     id = productData[productData.length - 1].id + 1
   }
 
-  if(name === '' || price === '' || !(!isNaN(parseFloat(price)) && isFinite(price))){
+  let inputIsInvalid = validateInput(name,price)
+  if(inputIsInvalid){
     alert('Please fill up necessary information')
   }  else{
     let data = {
@@ -85,21 +86,86 @@ function addItem(e){
     saveDataToLocalStorage(data)
 
     productListUL.innerHTML = ''
-    getData(productData)
+    addDataToUI(productData)
     nameInput.value = ''
     priceInput.value = ''
   }
 }
-function deleteItem(e){
+function validateInput(name,price){
+  return (name === '' || price === '' || !(!isNaN(parseFloat(price)) && isFinite(price))
+  )
+} 
+
+function findProductById(id){
+return productData.find(productItem => productItem.id === id)
+}
+
+function modifyOrDltItem(e){
+  
+  let target = e.target.parentElement.parentElement;
+  let id = parseInt(target.id.split('-')[1])
   // change ui element
   if(e.target.classList.contains('delete-product')){
-    let target = e.target.parentElement;
     target.remove();
-
-    let id = parseInt(target.id.split('-')[1])
 
     deleteItemFromLocalStorage(id)
 
+  } else if(e.target.classList.contains('edit-product')){
+    let updateBtnElm;
+    // search id from ui data source
+
+    // get product from data source
+    const foundProduct = findProductById(id)
+    if(!foundProduct){
+      alert('error')
+    } 
+    nameInput.value = foundProduct.name
+    priceInput.value = foundProduct.price
+    //hide add button
+    addBtn.style.display = 'none'
+    // create update button
+    const updateBtn = `<button type='submit' class ='btn-info update-product btn-block'>Update</button>`
+    formElm.insertAdjacentHTML('beforeend',updateBtn)
+    updateBtnElm = document.querySelector('.update-product')
+    // add event listener to update button and get the data
+    updateBtnElm.addEventListener('click',e =>{
+      
+    e.preventDefault()
+    // validate input
+    const inputIsInvalid = validateInput(nameInput.value,priceInput.value)
+    if(inputIsInvalid){
+      alert('input is not valid')
+    } else {
+    //add data to data source
+      productData = productData.map(productItem =>{
+      if(productItem.id === id){
+        return {
+          ...productItem,
+          name: nameInput.value,
+          price: priceInput.value
+        }
+      } else {
+        return productItem
+      }
+    })
+
+    location.reload()
+    
+    //add updated data to ui
+    addDataToUI(productData)
+
+    // change ui element
+    nameInput.value = ''
+    priceInput.value = ''
+    updateBtnElm.remove()
+    addBtn.style.display = 'block'
+
+    
+    // add updated data to local storage
+    localStorage.setItem('productItem',JSON.stringify(productData))
+
+    }
+    })
   }
 }
 function filterItem(e){
@@ -119,7 +185,7 @@ function filterItem(e){
 function showMsg(message){
   msg.innerHTML = message
 }
-function getData(productList){
+function addDataToUI(productList){
   if(productData.length > 0){
     productList.forEach(product => {
       // destructure object
@@ -129,7 +195,9 @@ function getData(productList){
       li.className = 'list-group-item collection-item'
       li.id = `product-${id}`
       li.innerHTML = `<strong>${name}</strong> - <span class="price">$${price}</span>
-      <i class="fa fa-trash float-right delete-product"></i>`
+      <div class="float-right">
+      <i class="fa fa-pencil-alt edit-product"></i>
+      <i class="fa fa-trash delete-product"></i></div>`
       productListUL.appendChild(li)
     });
   } else {
